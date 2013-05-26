@@ -8,8 +8,8 @@ A chat server that loves you back.
 4. Start chatting and blowing other people out of the server.
 
 ## Commands
-* /nick <nick>: Sets your nickname.
-* /bang <nick>: Blows your target off the server.
+* **/nick <nick>**: Sets your nickname.
+* **/bang <nick>**: Blows your target off the server.
 
 ## License
 [MIT License](http://opensource.org/licenses/MIT)
