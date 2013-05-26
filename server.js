@@ -40,7 +40,7 @@ channel.on('syscommand', function( command, socket ) {
       }
       // check for existing name
       for(var index in users) {
-        if(users[index].name === requestedNick) {
+        if(users[index].name.toLowerCase() === requestedNick.toLowerCase() ) {
           socket.write('ERROR: Name currently in use.\n');
           return;
         }
