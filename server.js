@@ -14,6 +14,76 @@ var port = process.env.PORT || 3000;
  * SET PORT ABOVE
 *******************************/
 
+var server = net.Server( function( socket ) {
+  var id = ++someNum;
+  var name = 'Guest' + id;
+  var currentRoom = 'lobby';
+  onlineCount++;
+
+  // populate user data
+  socket.id = id;
+  socket.name = name;
+  socket.currentRoom = currentRoom;
+
+  // add user to global user list & lobby room
+  users[id] = socket;
+  rooms[currentRoom].push(id);
+
+  welcomeUser ( socket );
+  handleMessages( socket );
+  handleDisconnect( socket );
+} );
+
+server.listen(port);
+console.log('Chatty Chatty Bang Bang!');
+console.log('------------------------')
+console.log('Listening in on port ' + port);
+console.log('------------------------')
+
+// FUNCTIONS
+function welcomeUser ( socket ) {
+  socket.write('Welcome!\n');
+  if (onlineCount > 1 ) {
+    channel.emit('sysmessage','There are ' + onlineCount + ' users online.\n' )
+  }
+  else {
+    socket.write("It's just you here!\n");
+  }
+}
+function handleMessages ( socket ) {
+  socket.on( 'data', function( data ) {
+    var dat = data.toString();
+    if(dat.indexOf('/') === 0) {
+      channel.emit('syscommand', dat, socket );
+    }
+    else {
+      channel.emit('message', dat, socket );
+    }
+  } );
+}
+
+function handleDisconnect ( sockt ) {
+  socket.on( 'end', function() {
+    leaveChannel( socket.currentRoom, socket.id );
+    userCleanup ( socket );
+  } );
+}
+
+function leaveChannel( channel, id ) {
+  var index = rooms[channel].indexOf( id );
+  if (index === -1) {
+    channel.emit('sysmessage', 'Cannot leave channel');
+    return;
+  }
+  rooms[channel].splice(index, 1);
+}
+
+function userCleanup( socket ) {
+  delete users[socket.id];
+  onlineCount--;
+  console.log('DISCONNECTED: ' + socket.name );
+}
+
 // EVENT HANDLERS
 channel.on('message', function( msg, socket ) {
   var userName = socket.name;
@@ -74,47 +144,3 @@ channel.on('sysmessage', function( msg ) {
     users[index].write( 'SYSTEM: ' + msg );
   }
 } );
-
-var server = net.Server( function( socket ) {
-  var id = ++someNum;
-  var name = 'Guest' + id;
-  var currentRoom = 'lobby';
-  onlineCount++;
-  socket.id = id;
-  socket.name = name;
-  socket.currentRoom = currentRoom;
-  users[id] = socket;
-  rooms[currentRoom].push(id);
-
-  socket.write('Welcome!\n');
-  if (onlineCount > 1 ) {
-    socket.write('There are ' + onlineCount + ' users online.\n');
-  }
-  else {
-    socket.write("It's just you here!\n");
-  }
-
-  socket.on( 'data', function( data ) {
-    var dat = data.toString();
-    if(dat.indexOf('/') === 0) {
-      channel.emit('syscommand', dat, socket );
-    }
-    else {
-      channel.emit('message', dat, socket );
-    }
-  } );
-
-  socket.on( 'end', function() {
-    var index = rooms[socket.currentRoom].indexOf(socket.id);
-    rooms[socket.currentRoom].splice(index, 1);
-    delete users[socket.id];
-    onlineCount--;
-    console.log('DISCONNECTED: ' + socket.name );
-  } );
-} );
-
-server.listen(port);
-console.log('Chatty Chatty Bang Bang!');
-console.log('------------------------')
-console.log('Listening in on port ' + port);
-console.log('------------------------')
