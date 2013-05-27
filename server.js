@@ -14,7 +14,6 @@ var port = process.env.PORT || 3000;
  * SET PORT ABOVE
 *******************************/
 
-// blooop
 channel.on('message', function( msg, id, userName ) {
   for(var index in users) {
     if(users[index].id !== id) {
