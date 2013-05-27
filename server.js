@@ -2,7 +2,7 @@ var net = require('net'),
     event = require('events'),
     channel = new event.EventEmitter(),
     users = {},
-    rooms = { 'lobby' : {} },
+    rooms = { 'lobby' : [] },
     someNum = 0,
     onlineCount = 0;
 
@@ -14,10 +14,15 @@ var port = process.env.PORT || 3000;
  * SET PORT ABOVE
 *******************************/
 
-channel.on('message', function( msg, id, userName ) {
-  for(var index in users) {
-    if(users[index].id !== id) {
-      users[index].write( userName + ': ' + msg );
+// EVENT HANDLERS
+channel.on('message', function( msg, socket ) {
+  var userName = socket.name;
+  var id = socket.id;
+  var currentRoom = socket.currentRoom;
+  for(var index in rooms[currentRoom]) {
+    var ourId = rooms[currentRoom][index];
+    if( ourId !== id) { // don't send to self
+      users[ourId].write( userName + ': ' + msg );
     }
   }
 });
@@ -25,6 +30,10 @@ channel.on('message', function( msg, id, userName ) {
 channel.on('syscommand', function( command, socket ) {
   var cmds = command.trim().split(' ');
   switch( cmds[0] ) {
+    case '/help':
+      socket.write('Available commands (prefixed by /):\n');
+      socket.write('help nick exit\n');
+      break;
     case '/nick':
       var requestedNick = cmds[1];
       // check for arg
@@ -49,10 +58,10 @@ channel.on('syscommand', function( command, socket ) {
       socket.write('Your new nickname is ' + requestedNick + '\n');
       break;
     case '/exit':
-      this.emit('message', socket.name + ' has disconnected.\n', socket.id, 'SYSTEM');
       delete users[socket.id];
       socket.write('Goodbye!\n');
       socket.end();
+      this.emit('sysmessage', socket.name + ' has disconnected.\n');
       break;
     default:
       socket.write('Command not recognized.\n');
@@ -60,14 +69,22 @@ channel.on('syscommand', function( command, socket ) {
   }
 });
 
+channel.on('sysmessage', function( msg ) {
+  for(var index in users) {
+    users[index].write( 'SYSTEM: ' + msg );
+  }
+} );
+
 var server = net.Server( function( socket ) {
   var id = ++someNum;
   var name = 'Guest' + id;
+  var currentRoom = 'lobby';
   onlineCount++;
-  console.log('CONNECTED: ' + name);
   socket.id = id;
   socket.name = name;
+  socket.currentRoom = currentRoom;
   users[id] = socket;
+  rooms[currentRoom].push(id);
 
   socket.write('Welcome!\n');
   if (onlineCount > 1 ) {
@@ -83,15 +100,16 @@ var server = net.Server( function( socket ) {
       channel.emit('syscommand', dat, socket );
     }
     else {
-      channel.emit('message', dat, socket.id, socket.name);
+      channel.emit('message', dat, socket );
     }
   } );
 
   socket.on( 'end', function() {
-    console.log('DISCONNECTED: ' + socket.name );
-    onlineCount--;
-    console.log(onlineCount);
+    var index = rooms[socket.currentRoom].indexOf(socket.id);
+    rooms[socket.currentRoom].splice(index, 1);
     delete users[socket.id];
+    onlineCount--;
+    console.log('DISCONNECTED: ' + socket.name );
   } );
 } );
 
