@@ -114,6 +114,12 @@ channel.on('message', function( msg, socket ) {
   }
 });
 
+channel.on('sysmessage', function( msg ) {
+  for(var index in users) {
+    users[index].write( 'SYSTEM: ' + msg );
+  }
+} );
+
 channel.on('syscommand', function( command, socket ) {
   var cmds = command.trim().split(' ');
   switch( cmds[0] ) {
@@ -170,9 +176,3 @@ channel.on('syscommand', function( command, socket ) {
       break;
   }
 });
-
-channel.on('sysmessage', function( msg ) {
-  for(var index in users) {
-    users[index].write( 'SYSTEM: ' + msg );
-  }
-} );
