@@ -42,14 +42,16 @@ console.log('------------------------')
 
 // FUNCTIONS
 function welcomeUser ( socket ) {
+  console.log('CONNECTED: ' + socket.name );
   socket.write('Welcome!\n');
   if (onlineCount > 1 ) {
-    channel.emit('sysmessage','There are ' + onlineCount + ' users online.\n' )
+    socket.write('There are ' + onlineCount + ' users online.\n' )
   }
   else {
     socket.write("It's just you here!\n");
   }
 }
+
 function handleMessages ( socket ) {
   socket.on( 'data', function( data ) {
     var dat = data.toString();
@@ -62,20 +64,35 @@ function handleMessages ( socket ) {
   } );
 }
 
-function handleDisconnect ( sockt ) {
+function handleDisconnect ( socket ) {
   socket.on( 'end', function() {
-    leaveChannel( socket.currentRoom, socket.id );
+    leaveRoom( socket );
     userCleanup ( socket );
   } );
 }
 
-function leaveChannel( channel, id ) {
-  var index = rooms[channel].indexOf( id );
+function sysToUsrMessage( socket, msg ) {
+  socket.write('SYSTEM: ' + msg + '\n');
+}
+
+function errorMessage( socket, msg ) {
+  socket.write('ERROR: ' + msg + '\n');
+}
+
+function joinRoom ( room, socket ) {
+  socket.currentRoom = room;
+  rooms[room].push( socket.id );
+  sysToUsrMessage( socket, 'You have joined ' + room );
+}
+
+function leaveRoom( socket ) {
+  var room = socket.currentRoom;
+  var index = rooms[room].indexOf( socket.id );
   if (index === -1) {
-    channel.emit('sysmessage', 'Cannot leave channel');
+    errorMessage( socket, 'Cannot leave room');
     return;
   }
-  rooms[channel].splice(index, 1);
+  rooms[room].splice(index, 1);
 }
 
 function userCleanup( socket ) {
@@ -101,40 +118,55 @@ channel.on('syscommand', function( command, socket ) {
   var cmds = command.trim().split(' ');
   switch( cmds[0] ) {
     case '/help':
-      socket.write('Available commands (prefixed by /):\n');
-      socket.write('help nick exit\n');
+      sysToUsrMessage( socket, 'Available commands (prefixed by /):');
+      sysToUsrMessage( socket, 'help nick room exit\n');
       break;
     case '/nick':
       var requestedNick = cmds[1];
       // check for arg
       if (!requestedNick) {
-        socket.write('syntax: /nick NEW_NICKNAME\n');
+        errorMessage( socket, 'syntax: /nick NEW_NICKNAME');
         return;
       }
       // nick cannot contain 'Guest'
       if(requestedNick.indexOf('Guest') >= 0) {
-        socket.write('ERROR: Name cannot contain "Guest".\n');
+        errorMessage( socket, 'Name cannot contain "Guest".');
         return;
       }
       // check for existing name
       for(var index in users) {
         if(users[index].name.toLowerCase() === requestedNick.toLowerCase() ) {
-          socket.write('ERROR: Name currently in use.\n');
+          errorMessage( socket, 'Name currently in use.' );
           return;
         }
       }
       // w00t, lets set our name!
       socket.name = requestedNick;
-      socket.write('Your new nickname is ' + requestedNick + '\n');
+      sysToUsrMessage( socket, 'Your new nickname is ' + requestedNick );
+      break;
+    case '/room':
+      var requestedRoom = cmds[1];
+      // check for arg
+      if (!requestedRoom) {
+        errorMessage( socket, 'syntax: /room ROOM_NAME' );
+        return;
+      }
+      // check if room exists; if not create it
+      if (!rooms[requestedRoom] ) {
+        rooms[requestedRoom] = [];
+      }
+      // w00t, letse join a room!
+      leaveRoom( socket );
+      joinRoom( requestedRoom, socket );
       break;
     case '/exit':
+      sysToUsrMessage( socket, 'Goodbye!' );
       delete users[socket.id];
-      socket.write('Goodbye!\n');
       socket.end();
       this.emit('sysmessage', socket.name + ' has disconnected.\n');
       break;
     default:
-      socket.write('Command not recognized.\n');
+      errorMessage( socket, 'Command not recognized.' );
       break;
   }
 });
