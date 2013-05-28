@@ -2,14 +2,18 @@
 A chat server that loves you back.
 
 ## Usage
-1. Set the desired port the server should listen on in `config/config.js`.
-2. Start the server with `node server`.
-3. Connect with a telnet client.
-4. Start chatting and blowing other people out of the server.
+1. Set the desired port the server should listen on in `server.js`.
+2. Start the server with `node server.js`.
+3. Connect with a telnet client. (eg: `telnet localhost 3000` will connect locally on default port)
+4. ???
+5. Profit.
 
 ## Commands
+* **/help**: Halllp!!!
 * **/nick &lt;nick>**: Sets your nickname.
-* **/bang &lt;nick>**: Blows your target off the server.
+* **/room &lt;room>**: Change your current room.
+* **/list [all]**: Lists users in channel. If "all" is specified, lists all online users.
+* **/exit**: Disconnect from server.
 
 ## License
 [MIT License](http://opensource.org/licenses/MIT)
