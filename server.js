@@ -165,6 +165,38 @@ channel.on('syscommand', function( command, socket ) {
       leaveRoom( socket );
       joinRoom( requestedRoom, socket );
       break;
+    case '/list':
+      var args = cmds[1];
+      var finalString = 'ONLINE USERS';
+      var online = '';
+      // check for arg
+      if (!args) {
+        var cr = socket.currentRoom;
+        finalString += ' (' + cr + '): ';
+        for(var i = 0; i < rooms[cr].length; ++i ) {
+          var id = rooms[cr][i];
+          online += users[id].name + ' ';
+        }
+        online += '\n';
+        finalString += online;
+        socket.write(finalString);
+        return;
+      }
+      else if (args === 'all' ) {
+        finalString += ': '
+        for(var index in users) {
+          online += users[index].name + ' ';
+        }
+        online += '\n';
+        finalString += online;
+        socket.write(finalString);
+        return;
+      }
+      else { // invalid syntax
+        errorMessage( socket, 'syntax: /list [all]' );
+        return;
+      }
+      break;
     case '/exit':
       sysToUsrMessage( socket, 'Goodbye!' );
       delete users[socket.id];
